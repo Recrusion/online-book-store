@@ -37,6 +37,7 @@ func main() {
 	books.HandleFunc("DELETE /delete/{tablename}/{id}", bookHandler.DeleteThings)
 	books.HandleFunc("POST /create/{tablename}", bookHandler.CreateThings)
 	books.HandleFunc("PATCH /update/{id}/{tablename}", bookHandler.UpdateThings)
+	books.HandleFunc("POST /signup", bookHandler.SignUp)
 	err = http.ListenAndServe(":8080", mux)
 	if err != nil {
 		log.Fatalf("Ошибка при прослушивании порта: %v", err)
