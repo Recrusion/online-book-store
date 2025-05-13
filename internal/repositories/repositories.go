@@ -7,6 +7,8 @@ import (
 	"online_book_store/internal/models"
 	"strings"
 	"sync"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type BookDB struct {
@@ -129,19 +131,24 @@ func (b *BookDB) GetAllThings(tableName string) ([]interface{}, error) {
 			var data models.Genres
 			err = rows.Scan(&data.ID, &data.Name)
 			if err != nil {
-				log.Fatalf("Ошибка в сканировании книг: %v", err)
+				log.Fatalf("Ошибка в сканировании жанров: %v", err)
 			}
 			datas = append(datas, data)
 		case tableName == "authors":
 			var data models.Authors
 			err = rows.Scan(&data.ID, &data.Name, &data.Bio)
 			if err != nil {
-				log.Fatalf("Ошибка в сканировании книг: %v", err)
+				log.Fatalf("Ошибка в сканировании авторов: %v", err)
 			}
 			datas = append(datas, data)
-
+		case tableName == "users":
+			var data models.Users
+			err = rows.Scan(&data.ID, &data.Username, &data.Email, &data.Password, &data.Address)
+			if err != nil {
+				log.Fatalf("Ошибка в сканировании пользователей: %v", err)
+			}
+			datas = append(datas, data)
 		}
-
 	}
 	return datas, nil
 }
@@ -261,4 +268,30 @@ func (b *BookDB) tableExists(tableName string) (bool, error) {
 	}
 
 	return exists, nil
+}
+
+func (b *BookDB) SignUp(input models.SignUp) (*models.Users, error) {
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatalf("Ошибка шифрования пароля: %v", err)
+	}
+
+	user := models.Users{
+		Username: input.Username,
+		Password: string(hashedPassword),
+		Email:    input.Email,
+		Address:  input.Address,
+	}
+
+	_, err = b.db.Exec(
+		`insert into users(username, email, password, address) values ($1, $2, $3, $4)`,
+		user.Username, user.Email, user.Password, user.Address,
+	)
+
+	if err != nil {
+		log.Fatalf("Ошибка регистрации: %v", err)
+	}
+
+	return &user, err
 }
