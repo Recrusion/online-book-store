@@ -33,12 +33,15 @@ func main() {
 	api := routegroup.Mount(mux, "/api")
 	v1 := api.Mount("/v1")
 	books := v1.Mount("/books")
+	auth := v1.Mount("/auth")
 	books.HandleFunc("GET /{tablename}", bookHandler.GetAllThings)
 	books.HandleFunc("DELETE /delete/{tablename}/{id}", bookHandler.DeleteThings)
 	books.HandleFunc("POST /create/{tablename}", bookHandler.CreateThings)
 	books.HandleFunc("PATCH /update/{id}/{tablename}", bookHandler.UpdateThings)
-	books.HandleFunc("POST /signup", bookHandler.SignUp)
-	err = http.ListenAndServe(":8080", mux)
+	auth.HandleFunc("POST /register", bookHandler.Register)
+	auth.HandleFunc("POST /login", bookHandler.Login)
+
+	err = http.ListenAndServe(":8081", mux)
 	if err != nil {
 		log.Fatalf("Ошибка при прослушивании порта: %v", err)
 	} else {

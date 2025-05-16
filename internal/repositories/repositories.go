@@ -183,7 +183,7 @@ func (b *BookDB) UpdateThings(id int, tableName string, updates map[string]inter
 	}
 
 	args = append(args, id)
-	query := fmt.Sprintf("UPDATE %s SET %s WHERE id = $%d", tableName, strings.Join(setValues, ", "), i)
+	query := fmt.Sprintf("update %s set %s where id = $%d", tableName, strings.Join(setValues, ", "), i)
 
 	result, err := b.db.Exec(query, args...)
 	if err != nil {
@@ -270,28 +270,58 @@ func (b *BookDB) tableExists(tableName string) (bool, error) {
 	return exists, nil
 }
 
-func (b *BookDB) SignUp(input models.SignUp) (*models.Users, error) {
+func (b *BookDB) Register(input models.Register) error {
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
-		log.Fatalf("Ошибка шифрования пароля: %v", err)
+		log.Fatalf("Ошибка хеширования пароля: %v", err)
 	}
 
-	user := models.Users{
+	newUser := models.Register{
 		Username: input.Username,
-		Password: string(hashedPassword),
 		Email:    input.Email,
+		Password: string(hashedPassword),
 		Address:  input.Address,
 	}
 
-	_, err = b.db.Exec(
-		`insert into users(username, email, password, address) values ($1, $2, $3, $4)`,
-		user.Username, user.Email, user.Password, user.Address,
+	query := fmt.Sprintf(
+		"insert into %s (%s) VALUES ('%s', '%s', '%s', '%s')",
+		"users",
+		"username, email, password, address",
+		newUser.Username, newUser.Email, newUser.Password, newUser.Address,
 	)
 
+	_, err = b.db.Query(query)
 	if err != nil {
-		log.Fatalf("Ошибка регистрации: %v", err)
+		log.Fatalf("Ошибка сохранения в базу данных: %v", err)
+	}
+	return nil
+}
+
+func (b *BookDB) Login(input models.Login) error {
+	loginUser := models.Login{
+		Email:    input.Email,
+		Password: input.Password,
 	}
 
-	return &user, err
+	user, _ := b.takeUserOnEmail(loginUser.Email)
+
+	hashedPassword := user.Password
+
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(loginUser.Password))
+	if err != nil {
+		log.Printf("Неправильный пароль: %v", err)
+	}
+
+	return nil
+}
+
+func (b *BookDB) takeUserOnEmail(email string) (models.Users, error) {
+	var user models.Users
+	query := `SELECT id, username, email, password, address FROM users WHERE email = $1`
+	err := b.db.QueryRow(query, email).Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.Address)
+	if err != nil {
+		log.Fatalf("Ошибка получения пользователя по email или пользователь не существует: %v", err)
+	}
+	return user, nil
 }

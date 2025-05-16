@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"online_book_store/internal/models"
+
 	"online_book_store/internal/repositories"
-	"online_book_store/internal/utils"
 	"strconv"
 )
 
@@ -140,27 +139,4 @@ func (b *BookDB) DeleteThings(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("Ошибка перевода в JSON: %v", err)
 	}
 	w.WriteHeader(http.StatusOK)
-}
-
-func (b *BookDB) SignUp(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	var input models.SignUp
-
-	err := json.NewDecoder(r.Body).Decode(&input)
-	if err != nil {
-		log.Fatalf("Ошибка парсинга JSON: %v", err)
-	}
-
-	user, err := b.repo.SignUp(input)
-	if err != nil {
-		log.Fatalf("Ошибка регистрации: %v", err)
-	}
-
-	token, err := utils.GenerateToken(user.ID)
-	if err != nil {
-		log.Fatalf("Ошибка генерации токена: %v", err)
-	}
-
-	json.NewEncoder(w).Encode(map[string]string{"token": token})
-	w.WriteHeader(http.StatusCreated)
 }
